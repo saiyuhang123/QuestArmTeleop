@@ -1,6 +1,6 @@
 <div align="center">
-  <h1 align="center"> quest teleop piper </h1>
-  <h3 align="center"> Agilex Robotics </h3>
+  <h1 align="center"> QuestArmTeleop for CANopen Arm </h1>
+  <h3 align="center"> syh 维护版 </h3>
   <p align="center">
     <a href="README.md"> English </a> | <a href="README_zh_CN.md">中文</a> 
   </p>
@@ -9,7 +9,11 @@
 
 ## 介绍
 
-该仓库实现了使用 meta quest2/3/3S VR 套装对本公司各款机械臂进行遥操作。
+这是由 syh 维护的 ROS 2 机械臂遥操作项目，使用 Meta Quest 2/3/3S
+头显和手柄产生遥操作输入。项目基于 Agilex Robotics 的
+[QuestArmTeleop](https://github.com/agilexrobotics/QuestArmTeleop)，并新增了带安全保护的
+六轴 CANopen 机械臂适配链路。代码来源与归属说明见
+[UPSTREAM.md](UPSTREAM.md)。
 
 ### 准备工作 
 
@@ -31,7 +35,7 @@ pip install meshcat casadi pyyaml pure-python-adb
 将代码克隆下来并编译：
 
 ```bash
-git clone   https://github.com/agilexrobotics/QuestArmTeleop.git
+git clone https://github.com/saiyuhang123/QuestArmTeleop.git
 
 cd QuestArmTeleop/src
 

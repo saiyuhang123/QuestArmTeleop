@@ -1,6 +1,6 @@
 <div align="center">
-  <h1 align="center"> quest teleop piper </h1>
-  <h3 align="center"> Agilex Robotics </h3>
+  <h1 align="center"> QuestArmTeleop for CANopen Arm </h1>
+  <h3 align="center"> Maintained by syh </h3>
   <p align="center">
     <a>English</a> | <a href="README_zh_CN.md">中文</a> 
   </p>
@@ -9,7 +9,11 @@
 
 ## Introduction
 
-This repository implements teleoperation of Agilex robotic arms using Meta Quest 2/3/3S VR headsets.
+This is a syh-maintained ROS 2 project for teleoperating robotic arms with
+Meta Quest 2/3/3S VR headsets. It is based on Agilex Robotics'
+[QuestArmTeleop](https://github.com/agilexrobotics/QuestArmTeleop) and adds a
+guarded integration path for a six-axis CANopen arm. See
+[UPSTREAM.md](UPSTREAM.md) for provenance and attribution.
 
 ## CANopen six-axis arm adapter
 
@@ -61,7 +65,7 @@ pip install meshcat casadi pyyaml pure-python-adb
 Clone the code and build:
 
 ```bash
-git clone   https://github.com/agilexrobotics/QuestArmTeleop.git
+git clone https://github.com/saiyuhang123/QuestArmTeleop.git
 
 cd QuestArmTeleop/src
 

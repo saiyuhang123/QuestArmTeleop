@@ -3,10 +3,13 @@
 <package format="3">
   <name>oculus_reader</name>
   <version>0.0.1</version>
-  <description>The oculus_reader package converted to ROS 2</description>
+  <description>ROS 2 Quest teleoperation input and IK adapter for supported robot arms</description>
 
-  <maintainer email="TODO@mail.com">TODO</maintainer>
+  <maintainer email="2906212119@qq.com">syh</maintainer>
+  <author email="2906212119@qq.com">syh</author>
   <license>Apache-2</license>
+  <url type="repository">https://github.com/saiyuhang123/QuestArmTeleop</url>
+  <url type="bugtracker">https://github.com/saiyuhang123/QuestArmTeleop/issues</url>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
