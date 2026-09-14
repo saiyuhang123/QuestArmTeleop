@@ -1,0 +1,36 @@
+/**:
+  ros__parameters:
+    robot_description_package: canopen_arm_description
+    urdf_relative_path: urdf/canopen_arm.urdf.xacro
+
+    # This arm has exactly six actuated joints; fixed/tool joints are not part of q.
+    locked_joints: ["__none__"]
+    ee_parent_joint: j6
+    ee_frame_name: ee_quest
+    output_joint_names: [joint1, joint2, joint3, joint4, joint5, joint6]
+
+    # Must match tool0_fixed in canopen_arm.urdf.xacro.
+    tool_pre_rot_rpy: [0.0, 0.0, -1.5708]
+    tool_translation_xyz: [0.0, 0.0, 0.14]
+
+    # Placeholder collision geometry is not accurate enough for a safety decision.
+    enable_collision_check: false
+
+    w_pos: 20.0
+    w_ori: 2.0
+    w_reg: 0.01
+    w_smooth: 0.1
+    ipopt_max_iter: 50
+    ipopt_tol: 1.0e-4
+
+    enable_visualization: false
+    viewer_open_browser: false
+    viewer_model_name: pinocchio
+    viewer_target_frame_name: ee_target
+    viewer_axis_length: 0.1
+    viewer_axis_width: 10.0
+
+    pose_stamped_topic: /delta_pose
+    target_frame_id: base_link
+    feedback_joint_topic: /feedback/joint_states
+    pin_joint_status_topic: /control/joint_states

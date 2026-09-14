@@ -11,6 +11,35 @@
 
 This repository implements teleoperation of Agilex robotic arms using Meta Quest 2/3/3S VR headsets.
 
+## CANopen six-axis arm adapter
+
+The repository also includes a guarded adapter for the six-axis `canopenTest`
+ROS 2 stack. It consumes that arm's xacro, maps feedback by joint name, checks
+the `base_link` target frame, and publishes a hold-to-run enable heartbeat.
+When Pinocchio has no CasADi bindings, IK automatically uses SciPy.
+
+After building and sourcing `canopenTest/ros2_ws`, build this workspace and run
+the hardware-free chain with:
+
+```bash
+sudo apt install ros-humble-pinocchio
+python3 -m pip install --user scipy==1.13.1
+colcon build --symlink-install
+source install/setup.bash
+ros2 launch oculus_reader canopen_arm_fake_ik.launch.py
+```
+
+To include the Quest input nodes while keeping the arm fake:
+
+```bash
+ros2 launch oculus_reader teleop_single_canopen_arm_fake.launch.py
+```
+
+The default is true hold-to-run: keep A pressed to command; release A or press
+B to disable. After B or an input timeout, release and press A again to re-arm.
+The real gripper path remains disabled, and this launch file never opens CAN or
+the vendor write backend.
+
 ### Prerequisites
 
 **1. Install dependencies and clone the code**

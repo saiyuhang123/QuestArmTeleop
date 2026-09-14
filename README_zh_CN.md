@@ -372,3 +372,49 @@ self.oculus_reader = OculusReader(ip_address='192.168.1.101')
 2. **启动应用程序：
    - 参考[软件启动](#软件启动)开启动程序。
    - 程序启动后可能会弹出“允许 USB 调试吗？”，勾选“始终允许”并确认。
+
+## CANopen 六轴机械臂适配（2026-09-14）
+
+仓库现在包含 `canopenTest` 六轴机械臂的专用 xacro/IK 配置和安全遥操作入口。
+先构建并 source `canopenTest/ros2_ws`，再构建本仓库：
+
+```bash
+sudo apt install ros-humble-pinocchio
+python3 -m pip install --user scipy==1.13.1
+
+source /opt/ros/humble/setup.bash
+cd ~/canopenTest/ros2_ws
+colcon build --symlink-install --packages-up-to canopen_arm_bringup
+source install/setup.bash
+
+cd ~/QuestArmTeleop
+colcon build --symlink-install
+source install/setup.bash
+```
+
+不连接 Quest 和机械臂，只启动 IK 到 Fake 机械臂：
+
+```bash
+ros2 launch oculus_reader canopen_arm_fake_ik.launch.py
+```
+
+连接 Quest、但仍使用 Fake 机械臂：
+
+```bash
+ros2 launch oculus_reader teleop_single_canopen_arm_fake.launch.py
+```
+
+默认安全行为：持续按住 A 才发布 `/canopen_arm/quest_teleop_enable=true`；
+松开、按 B、手柄/TCP 数据超时都会撤销使能。目标位姿必须位于
+`base_link`，关节反馈和命令都按名称重排。按 B 或数据超时后必须先松开 A
+再重新按下，不能自动恢复。夹爪转发默认关闭。
+
+自动化全链测试：
+
+```bash
+colcon test --packages-select oculus_reader --event-handlers console_direct+
+colcon test-result --verbose
+```
+
+该测试只使用 Fake Backend，不打开 CAN。真机运动仍需等待 `canopenTest` 的
+可写 Vendor Backend 与安全验收完成。

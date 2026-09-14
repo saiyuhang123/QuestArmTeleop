@@ -40,5 +40,19 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}
 )
 
+if(BUILD_TESTING)
+  # This optional integration test is enabled when the CANopen arm workspace is
+  # sourced as an underlay. It runs only ros2_control's fake backend.
+  find_package(canopen_arm_bringup QUIET)
+  if(canopen_arm_bringup_FOUND)
+    add_test(
+      NAME fake_canopen_arm_ik_e2e
+      COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test/fake_canopen_arm_ik_e2e.sh
+              ${CMAKE_INSTALL_PREFIX}/..
+    )
+    set_tests_properties(fake_canopen_arm_ik_e2e PROPERTIES TIMEOUT 240 RUN_SERIAL TRUE)
+  endif()
+endif()
+
 # 6. 打包并导出
 ament_package()

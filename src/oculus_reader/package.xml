@@ -19,6 +19,12 @@
   <depend>tf2_ros</depend>
   
   <depend>ament_index_python</depend>
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>canopen_arm_bringup</exec_depend>
+  <exec_depend>canopen_arm_description</exec_depend>
+  <exec_depend>pinocchio</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-scipy</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
