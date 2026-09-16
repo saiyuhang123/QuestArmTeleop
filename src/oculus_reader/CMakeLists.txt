@@ -22,6 +22,7 @@ install(PROGRAMS
   scripts/oculus_reader.py
   scripts/pub_pose.py
   scripts/pub_delta_pose.py
+  scripts/webxr_teleop_node.py
   scripts/arm_ik_pose_node.py
   scripts/transformations.py
 
