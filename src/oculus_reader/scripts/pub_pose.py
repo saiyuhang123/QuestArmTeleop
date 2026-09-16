@@ -113,23 +113,26 @@ class OculusPublisher(Node):
 
     def _timer_callback(self):
         transformations, _ = self.oculus_reader.get_transformations_and_buttons()
-        r_transform = transformations.get('r')
-        l_transform = transformations.get('l')
-        if r_transform is None or l_transform is None:
-            return
-
-        # 将坐标系转换为ROS标准（X朝前、Y朝左、Z朝上）
-        # ps：需要将头显放平且手握手柄时摇杆面朝向自己才能确保遥操的跟手
-        r_transform_ros = self._correct_to_ros(r_transform)
-        l_transform_ros = self._correct_to_ros(l_transform)
         now = self.get_clock().now().to_msg()
 
-        self._publish_transform(
-            r_transform_ros, self.right_handle_pose_pub, self.right_tf_msg, self.right_pose_msg, now
-        )
-        self._publish_transform(
-            l_transform_ros, self.left_handle_pose_pub, self.left_tf_msg, self.left_pose_msg, now
-        )
+        # Publish each hand independently: the other hand may be asleep or out
+        # of tracking, which must not silence the hand actually in use.
+        for key, pose_pub, tf_msg, pose_msg, last_attr in (
+            ('r', self.right_handle_pose_pub, self.right_tf_msg, self.right_pose_msg, '_last_published_r'),
+            ('l', self.left_handle_pose_pub, self.left_tf_msg, self.left_pose_msg, '_last_published_l'),
+        ):
+            transform = transformations.get(key)
+            if transform is None:
+                continue
+            # Never re-stamp and re-publish a cached frame as if it were fresh:
+            # downstream deadman/freshness checks rely on silence on stale data.
+            last = getattr(self, last_attr, None)
+            if last is not None and np.array_equal(last, transform):
+                continue
+            setattr(self, last_attr, transform)
+            self._publish_transform(
+                self._correct_to_ros(transform), pose_pub, tf_msg, pose_msg, now
+            )
 
     def destroy_node(self):
         self.oculus_reader.stop()

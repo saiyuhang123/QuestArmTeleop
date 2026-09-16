@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import math
 import time
 from typing import Any
 
@@ -65,6 +66,15 @@ class RosOperator(Node):
         self.declare_parameter("handle_timeout_seconds", 0.25)
         self.declare_parameter("tcp_timeout_seconds", 0.50)
         self.declare_parameter("publish_gripper_when_disabled", False)
+        # The arm tracks slower than the handle stream; without saturation the
+        # target runs away from the physical arm and the joint-jump guard locks
+        # up. Keep the published target inside this sphere around the latest
+        # TCP feedback so the arm can always catch up.
+        self.declare_parameter("max_target_offset_m", 0.15)
+        # Fixed rotation (RPY degrees, 'xyz') from the handle's published frame
+        # into base_link. Measured on the real setup 2026-09-15: user forward =
+        # handle +Y, user left = handle +X, user up = handle -Z.
+        self.declare_parameter("frame_align_rpy_deg", [180.0, 0.0, 90.0])
 
         handle_pose_topic = str(self.get_parameter("handle_pose_topic").value)
         feedback_tcp_pose_topic = str(self.get_parameter("feedback_tcp_pose_topic").value)
@@ -87,6 +97,8 @@ class RosOperator(Node):
         self.publish_gripper_when_disabled = bool(
             self.get_parameter("publish_gripper_when_disabled").value
         )
+        self.max_target_offset_m = float(self.get_parameter("max_target_offset_m").value)
+        self.frame_align_rpy_deg = list(self.get_parameter("frame_align_rpy_deg").value)
         if (
             not self.delta_pose_frame_id
             or self.handle_timeout_seconds <= 0.0
@@ -112,6 +124,12 @@ class RosOperator(Node):
         self.tcp_roll = None
         self.tcp_pitch = None
         self.tcp_yaw = None
+        self.tcp_quat = None
+
+        self.start_handle_pos = None
+        self.anchor_tcp_pos = None
+        self.anchor_tcp_quat = None
+        self.align_rot = np.eye(3)
 
         self.flag = False
         self.rearm_required = False
@@ -157,6 +175,10 @@ class RosOperator(Node):
         (self.tcp_roll, self.tcp_pitch, self.tcp_yaw) = euler_from_quaternion(
             [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
         )
+        self.tcp_quat = [
+            msg.pose.orientation.x, msg.pose.orientation.y,
+            msg.pose.orientation.z, msg.pose.orientation.w,
+        ]
         self.last_tcp_time = time.monotonic()
 
     def _inputs_are_fresh(self) -> bool:
@@ -174,17 +196,23 @@ class RosOperator(Node):
         self.pub_enable.publish(message)
 
     def _activate(self) -> None:
+        # Anchor in a FIXED frame: handle position deltas (in the handle's
+        # published frame) are rotated by a fixed alignment yaw into base_link
+        # and added to the TCP at engagement. Orientation is held at the
+        # engagement TCP orientation for now (position-first teleop).
+        self.start_handle_pos = np.array([self.x, self.y, self.z], dtype=float)
+        self.anchor_tcp_pos = np.array([self.tcp_x, self.tcp_y, self.tcp_z], dtype=float)
+        self.anchor_tcp_quat = list(self.tcp_quat)
+        # keep the legacy matrices for compatibility with any external use
         self.start_pose_matrix = xyzrpy_to_mat(
             self.x, self.y, self.z, self.roll, self.pitch, self.yaw
         )
         self.zero_matrix = xyzrpy_to_mat(
-            self.tcp_x,
-            self.tcp_y,
-            self.tcp_z,
-            self.tcp_roll,
-            self.tcp_pitch,
-            self.tcp_yaw,
+            self.tcp_x, self.tcp_y, self.tcp_z,
+            self.tcp_roll, self.tcp_pitch, self.tcp_yaw,
         )
+        self.align_rot = Rotation.from_euler(
+            "xyz", self.frame_align_rpy_deg, degrees=True).as_matrix()
         self.flag = True
         self.get_logger().info(f"[{self.hand_name}] 开始遥操作")
 
@@ -271,10 +299,16 @@ class RosOperator(Node):
 
         if not enabled:
             return
+        if self.start_handle_pos is None or self.anchor_tcp_quat is None:
+            return
 
-        current_pose = [self.x, self.y, self.z, self.roll, self.pitch, self.yaw]
-
-        xyz, quat = calc_pose_incre(self.start_pose_matrix, current_pose, self.zero_matrix)
+        # Fixed-frame position tracking: handle position delta (published
+        # frame) rotated into base_link by the fixed alignment yaw, then added
+        # to the engagement-time TCP. Orientation is held at engagement.
+        handle_now = np.array([self.x, self.y, self.z], dtype=float)
+        delta = self.align_rot @ (handle_now - self.start_handle_pos)
+        xyz = self._clamp_target_to_tcp((self.anchor_tcp_pos + delta).tolist())
+        quat = self.anchor_tcp_quat
         pose_msg = PoseStamped()
         pose_msg.header.stamp = self.get_clock().now().to_msg()
         pose_msg.header.frame_id = self.delta_pose_frame_id
@@ -286,6 +320,24 @@ class RosOperator(Node):
         pose_msg.pose.orientation.z = float(quat[2])
         pose_msg.pose.orientation.w = float(quat[3])
         self.pub_delta_pose.publish(pose_msg)
+
+    def _clamp_target_to_tcp(self, xyz):
+        # The arm can only track a target that stays near its current TCP: on
+        # slow backends the physical arm lags, and without saturation the
+        # target runs away and the joint-jump guard locks up. Clamp the target
+        # translation into a sphere around the latest TCP feedback.
+        if self.tcp_x is None or self.max_target_offset_m <= 0.0:
+            return xyz
+        offset = np.array(
+            [float(xyz[0]) - self.tcp_x,
+             float(xyz[1]) - self.tcp_y,
+             float(xyz[2]) - self.tcp_z])
+        distance = float(np.linalg.norm(offset))
+        if distance <= self.max_target_offset_m:
+            return xyz
+        clamped = np.array([self.tcp_x, self.tcp_y, self.tcp_z]) + \
+            offset / distance * self.max_target_offset_m
+        return [float(v) for v in clamped]
 
     def destroy_node(self):
         self._publish_enable(False)

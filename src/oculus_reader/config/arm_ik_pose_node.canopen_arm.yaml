@@ -19,8 +19,8 @@
     w_pos: 20.0
     w_ori: 2.0
     w_reg: 0.01
-    w_smooth: 0.1
-    ipopt_max_iter: 50
+    w_smooth: 0.3
+    ipopt_max_iter: 300
     ipopt_tol: 1.0e-4
 
     enable_visualization: false
