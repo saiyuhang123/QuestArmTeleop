@@ -16,11 +16,58 @@
     # Placeholder collision geometry is not accurate enough for a safety decision.
     enable_collision_check: false
 
+    # w_smooth regularizes toward the previous solution; it is the primary
+    # damper for sub-jump_lock_rad branch dither (measured 2026-09-18:
+    # +/-0.1 rad anti-phase j2/j4 oscillation at 2-3 Hz flowing straight to
+    # the arm, which low-passes it into a crawl). An earlier test that
+    # rejected 2.0 as "sluggish" was contaminated by the branch-lock
+    # comparison bug (fixed 2026-09-18); with the lock correct, 2.0 damps
+    # dither while w_pos=20 still lets legitimate reconfigurations through.
     w_pos: 20.0
     w_ori: 2.0
     w_reg: 0.01
-    w_smooth: 0.3
-    ipopt_max_iter: 300
+    w_smooth: 2.0
+    # Streaming IK mode: 'differential' (per-tick damped least-squares
+    # Jacobian steps from the measured configuration — standard teleop
+    # architecture, no convergence basins) or 'nlp' (absolute least_squares
+    # re-solve per tick — kept for regression comparison). The NLP solver
+    # still runs in differential mode for re-anchoring after idle or large
+    # tracking errors.
+    ik_mode: differential
+    # Per-incoming-message step caps (30 Hz stream): 10 mm / 0.05 rad task
+    # step == 300 mm/s task ceiling; 0.05 rad joint step == 1.5 rad/s.
+    diff_max_step_position_m: 0.02
+    diff_max_step_rotation_rad: 0.05
+    diff_max_joint_step_rad: 0.08
+    # Damped least-squares: manipulability-adaptive damping between
+    # lambda_min (healthy) and lambda_max (near-singular).
+    diff_lambda_min: 0.02
+    diff_lambda_max: 0.08
+    diff_manipulability_threshold: 0.0003
+    # Absolute NLP re-anchor bounds. Set generous so re-anchoring fires ONLY
+    # on engagement (idle re-anchor) or genuine tracking loss: mid-stream the
+    # differential tracker already saturates its per-tick clamps to follow as
+    # fast as the arm allows, and an aggressive NLP re-solve on a lagging
+    # stream can hop branches and trip the bridge's jump rejection
+    # (observed 2026-09-18 as "slower than before").
+    diff_reanchor_position_m: 0.5
+    diff_reanchor_rotation_rad: 1.5
+    diff_position_deadband_m: 0.0005
+    diff_rotation_deadband_rad: 0.005
+    # Velocity-integrating form: task servo rates and integration limits.
+    # kp_pos 4.0/s with the 0.02 m step clamp tops the task demand at
+    # ~80 mm/s; qdot cap
+    # 1.5 rad/s at 30 Hz == 0.05 rad/tick; lead cap 0.35 rad bounds the
+    # command ahead of the measured arm (the freeze-window equivalent).
+    diff_kp_pos: 4.0
+    diff_kp_ori: 1.0
+    diff_qdot_max_rad_s: 1.5
+    diff_lead_max_rad: 0.35
+    diff_sigma_ref: 0.02
+    # Teleop-grade accuracy: 1e-3 tolerance and a 100-iteration cap cut the
+    # IPOPT solve latency roughly 3x versus the 1e-4/300 precise-IK setting,
+    # which matters more than sub-millimetre IK accuracy here.
+    ipopt_max_iter: 100
     ipopt_tol: 1.0e-4
 
     enable_visualization: false

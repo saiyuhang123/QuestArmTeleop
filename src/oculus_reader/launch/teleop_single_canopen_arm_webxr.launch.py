@@ -30,6 +30,10 @@ def generate_launch_description():
                 # recenter facing the arm's forward or re-measure with
                 # ~/QuestArmTeleop/tools/measure_session_yaw.py.
                 "session_yaw_deg": 0.0,
+                # Default 0.3 low-passes the handle pose with ~80 ms time
+                # constant, which reads as noticeable teleop lag; 0.5 cuts it
+                # to ~33 ms at the 30 Hz control rate.
+                "smoothing_alpha": 0.5,
             }
         ],
     )
